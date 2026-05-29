@@ -29,7 +29,8 @@ def set_ui_theme():
             }}
             </style>
         ''', unsafe_allow_html=True)
-    except: pass
+    except: pasexcept Exception as e:
+    st.warning(f"Background image not loaded: {e}")s
     
     with open("styles.css") as f:
         st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
@@ -38,9 +39,15 @@ set_ui_theme()
 
 # --- 2. MODEL ---
 @st.cache_resource
-def load_model():
-    try: return tf.keras.models.load_model('best_model.keras')
-    except: return None
+def load_ai_model():
+    try:
+        model = tf.keras.models.load_model("best_model.keras")
+        return model
+    except Exception as e:
+        st.error(f"Model loading failed: {e}")
+        return None
+
+model = load_ai_model()
 
 model = load_model()
 
@@ -76,8 +83,8 @@ st.markdown("<br>", unsafe_allow_html=True)
 uploaded_file = st.file_uploader(t['upload_label'], type=["jpg", "png", "jpeg"])
 
 if uploaded_file is not None:
-    image = Image.open(uploaded_file)
-    st.divider()
+image = Image.open(uploaded_file).convert("RGB")
+st.divider()
     st.markdown(f"<h3 style='color:white; text-shadow: 1px 1px 3px rgba(0,0,0,0.5);'>{t['result_header']}</h3>", unsafe_allow_html=True)
     
     col1, col2 = st.columns([1, 1.2], gap="large")
@@ -89,12 +96,14 @@ if uploaded_file is not None:
     with col2:
         if model:
             # AI Inference
-            img = image.resize((224, 224))
-            arr = np.array(img) / 255.0
+           img = image.resize((224, 224))
+            arr = np.array(img).astype("float32") / 255.0
             arr = np.expand_dims(arr, axis=0)
-            preds = model.predict(arr)
+            with st.spinner("Analyzing palm leaf..."):
+                preds = model.predict(arr)
             idx = np.argmax(preds)
-            conf = np.max(preds) * 100
+            if conf < 60:
+    st.warning("Low confidence prediction. Please upload a clearer leaf image.")
             
             eng_name = LANG_DICT["English"]["conditions"][idx]
             local_name = t["conditions"][idx]
